@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="tupass">
+  <rect width="256" height="256" rx="56" fill="#1e1e2e"/>
+  <!-- shackle -->
+  <path d="M88 116 V94 a40 40 0 0 1 80 0 V116" fill="none" stroke="#cba6f7" stroke-width="16" stroke-linecap="round"/>
+  <!-- body -->
+  <rect x="62" y="116" width="132" height="94" rx="20" fill="#cba6f7"/>
+  <!-- keyhole -->
+  <circle cx="128" cy="152" r="15" fill="#1e1e2e"/>
+  <rect x="120" y="152" width="16" height="34" rx="8" fill="#1e1e2e"/>
+</svg>

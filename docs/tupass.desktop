@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=tupass
+GenericName=Password Manager
+Comment=Terminal UI for GNU pass
+Exec=kitty --class Tupass --title tupass tupass
+Icon=tupass
+Terminal=false
+Categories=Utility;Security;
+Keywords=pass;password;gpg;otp;
+StartupWMClass=Tupass

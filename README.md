@@ -54,6 +54,24 @@ bun run dev
 
 If no store exists at `~/.password-store`, tupass exits with instructions to run `pass init`.
 
+### Desktop entry
+
+A launcher and lock icon live in [`docs/`](docs). Install them to get a `tupass`
+app entry (opens in a dedicated kitty window with `WM_CLASS=Tupass`):
+
+```bash
+install -Dm644 docs/tupass.svg ~/.local/share/icons/hicolor/scalable/apps/tupass.svg
+install -Dm644 docs/tupass.desktop ~/.local/share/applications/tupass.desktop
+update-desktop-database ~/.local/share/applications 2>/dev/null || true
+gtk-update-icon-cache ~/.local/share/icons/hicolor 2>/dev/null || true
+```
+
+Or just launch it directly:
+
+```bash
+kitty --class Tupass --title tupass tupass
+```
+
 ## Keybindings
 
 | Key | Action |
