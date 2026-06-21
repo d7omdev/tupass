@@ -5,8 +5,13 @@
   "type": "module",
   "private": true,
   "bin": {
-    "tupass": "dist/tupass.js"
+    "tupass": "bin/tupass.js"
   },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
   "scripts": {
     "dev": "bun run src/index.tsx",
     "start": "bun run src/index.tsx",

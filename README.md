@@ -23,17 +23,31 @@ Browse your store as a collapsible tree, decrypt on demand, copy to the clipboar
 - Optional: the [`pass-otp`](https://github.com/tadfisher/pass-otp) extension for OTP codes
 - A terminal with **truecolor** and a **[Nerd Font](https://www.nerdfonts.com/)** (icons + glyphs)
 
-## Install & run
+## Install
+
+tupass runs on **Bun** - OpenTUI uses `bun:ffi` for its native renderer, so Node is not supported. The `tupass` command is a tiny launcher that runs on your installed Bun; no runtime is bundled.
+
+Install globally (Bun fetches the right native renderer for your platform):
 
 ```bash
+bun add -g github:d7omdev/tupass
+```
+
+Then just run:
+
+```bash
+tupass
+```
+
+### From source
+
+```bash
+git clone https://github.com/d7omdev/tupass
+cd tupass
 bun install
-
-# run from source
+bun link          # puts `tupass` on your PATH (runs via your Bun)
+# or run without linking:
 bun run dev
-
-# or build a standalone CLI and link it
-bun run build      # emits dist/tupass.js (the `tupass` bin)
-bun link           # makes `tupass` available on your PATH
 ```
 
 If no store exists at `~/.password-store`, tupass exits with instructions to run `pass init`.
