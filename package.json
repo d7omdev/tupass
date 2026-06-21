@@ -1,0 +1,36 @@
+{
+  "name": "tupass",
+  "version": "0.1.0",
+  "description": "A terminal UI for GNU pass (the standard unix password manager), built with OpenTUI.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "tupass": "dist/tupass.js"
+  },
+  "scripts": {
+    "dev": "bun run src/index.tsx",
+    "start": "bun run src/index.tsx",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "validate": "bun run typecheck && bun run lint"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/bun": "latest",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19",
+    "eslint": "^10.5.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.61.0",
+    "vite": "^8.0.16",
+    "vite-plugin-dts": "^5.0.2"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.4.1",
+    "@opentui/react": "^0.4.1",
+    "react": "^19.2.7"
+  }
+}
