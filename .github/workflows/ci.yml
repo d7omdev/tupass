@@ -1,0 +1,21 @@
+name: CI
+
+# Typecheck + lint on every push and pull request (excluding tag pushes, which
+# the Release workflow already validates).
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run validate

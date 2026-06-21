@@ -1,25 +1,25 @@
 # tupass
 
-A fast, keyboard-driven terminal UI for [GNU `pass`](https://www.passwordstore.org/) — the standard unix password manager — built with [OpenTUI](https://github.com/sst/opentui) and React.
+A fast, keyboard-driven terminal UI for [GNU `pass`](https://www.passwordstore.org/) - the standard unix password manager - built with [OpenTUI](https://github.com/sst/opentui) and React.
 
-Browse your store as a collapsible tree, decrypt on demand, copy to the clipboard (auto-clearing), generate passwords, manage OTP codes, and rename/move/duplicate entries — all without leaving the terminal. It themes itself from your terminal palette and ships a dozen bundled color schemes with a live picker.
+Browse your store as a collapsible tree, decrypt on demand, copy to the clipboard (auto-clearing), generate passwords, manage OTP codes, and rename/move/duplicate entries - all without leaving the terminal. It themes itself from your terminal palette and ships a dozen bundled color schemes with a live picker.
 
 ## Features
 
-- **Tree browser** — collapsible folders, windowed for large stores, fuzzy filter (`/`).
-- **Lazy decryption** — entries are only decrypted when you open them; the rest is instant.
-- **Clipboard** — copy the password or a specific field via `pass -c` (auto-clears after 45s).
-- **OTP** — generate TOTP codes for entries (requires the `pass-otp` extension).
-- **Full CRUD** — add, edit, generate, rename (in place), move (folder picker), duplicate, delete.
-- **Git** — one-key sync (`pull --rebase` + `push`) and recent-log view for git-backed stores.
-- **Theming** — auto-detects your terminal colors, plus bundled schemes (Catppuccin, Dracula, Tokyo Night, Nord, Gruvbox, Rosé Pine, Kanagawa, Everforest, Solarized, GitHub Light…) switchable live with `t`. Your choice persists.
-- **Responsive** — side preview pane on wide terminals; on narrow ones it collapses to a single-column list with each entry's details expanding inline.
+- **Tree browser** - collapsible folders, windowed for large stores, fuzzy filter (`/`).
+- **Lazy decryption** - entries are only decrypted when you open them; the rest is instant.
+- **Clipboard** - copy the password or a specific field via `pass -c` (auto-clears after 45s).
+- **OTP** - generate TOTP codes for entries (requires the `pass-otp` extension).
+- **Full CRUD** - add, edit, generate, rename (in place), move (folder picker), duplicate, delete.
+- **Git** - one-key sync (`pull --rebase` + `push`) and recent-log view for git-backed stores.
+- **Theming** - auto-detects your terminal colors, plus bundled schemes (Catppuccin, Dracula, Tokyo Night, Nord, Gruvbox, Rosé Pine, Kanagawa, Everforest, Solarized, GitHub Light…) switchable live with `t`. Your choice persists.
+- **Responsive** - side preview pane on wide terminals; on narrow ones it collapses to a single-column list with each entry's details expanding inline.
 
 ## Requirements
 
 - [Bun](https://bun.com) (runtime + package manager)
 - [`pass`](https://www.passwordstore.org/) with an initialized store (`pass init <gpg-id>`)
-- `gpg` + `gpg-agent` — a **graphical pinentry** (gtk/qt/gnome) is recommended; a TTY pinentry can conflict with the full-screen UI on first unlock
+- `gpg` + `gpg-agent` - a **graphical pinentry** (gtk/qt/gnome) is recommended; a TTY pinentry can conflict with the full-screen UI on first unlock
 - Optional: the [`pass-otp`](https://github.com/tadfisher/pass-otp) extension for OTP codes
 - A terminal with **truecolor** and a **[Nerd Font](https://www.nerdfonts.com/)** (icons + glyphs)
 
@@ -84,4 +84,4 @@ bun run lint
 
 ## Security
 
-tupass never sees your passphrase — decryption is delegated to `gpg`/`gpg-agent`, and all entry names are passed as discrete argv (never interpolated into a shell), so a name like `$(rm -rf ~)` is inert.
+tupass never sees your passphrase - decryption is delegated to `gpg`/`gpg-agent`, and all entry names are passed as discrete argv (never interpolated into a shell), so a name like `$(rm -rf ~)` is inert.
