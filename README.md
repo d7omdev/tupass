@@ -4,6 +4,8 @@ A fast, keyboard-driven terminal UI for [GNU `pass`](https://www.passwordstore.o
 
 Browse your store as a collapsible tree, decrypt on demand, copy to the clipboard (auto-clearing), generate passwords, manage OTP codes, and rename/move/duplicate entries - all without leaving the terminal. It themes itself from your terminal palette and ships a dozen bundled color schemes with a live picker.
 
+![tupass](docs/screenshot.png)
+
 ## Features
 
 - **Tree browser** - collapsible folders, windowed for large stores, fuzzy filter (`/`).
