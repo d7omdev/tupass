@@ -35,10 +35,10 @@ Browse your store as a collapsible tree, decrypt on demand, copy to the clipboar
 
 tupass runs on **Bun** - OpenTUI uses `bun:ffi` for its native renderer, so Node is not supported. The `tupass` command is a tiny launcher that runs on your installed Bun; no runtime is bundled.
 
-Install globally (Bun fetches the right native renderer for your platform):
+Install globally from npm (Bun fetches the right native renderer for your platform):
 
 ```bash
-bun add -g github:d7omdev/tupass
+bun add -g tupass
 ```
 
 Then just run:
