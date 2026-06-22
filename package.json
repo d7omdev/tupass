@@ -1,8 +1,14 @@
 {
   "name": "tupass",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A terminal UI for GNU pass (the standard unix password manager), built with OpenTUI.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d7omdev/tupass.git"
+  },
+  "homepage": "https://github.com/d7omdev/tupass#readme",
+  "bugs": "https://github.com/d7omdev/tupass/issues",
   "bin": {
     "tupass": "bin/tupass.js"
   },

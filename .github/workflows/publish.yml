@@ -1,0 +1,30 @@
+name: Publish
+
+# Publishes to npm when a GitHub release is published. Also runnable manually
+# (workflow_dispatch) — e.g. to retry after adding the NPM_TOKEN secret.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for npm provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run validate
+      # setup-node writes an .npmrc wired to NODE_AUTH_TOKEN for the publish.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
