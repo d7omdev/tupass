@@ -3,6 +3,8 @@
   "version": "0.2.0",
   "description": "A terminal UI for GNU pass (the standard unix password manager), built with OpenTUI.",
   "type": "module",
+  "license": "MIT",
+  "author": "d7omdev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/d7omdev/tupass.git"
