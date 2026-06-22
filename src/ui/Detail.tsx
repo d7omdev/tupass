@@ -2,17 +2,17 @@
 // with the password masked until the user reveals it. Metadata fields and notes
 // are shown structured. OTP entries get a live-generated code on demand.
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { useTerminalDimensions } from "@opentui/react";
 import { TextAttributes, type ColorInput } from "@opentui/core";
 import { theme, ICON } from "./theme";
 import { Hint } from "./Hint";
-import { LOGO } from "./logo";
+import { LOGO_SMALL, LOGO_SMALL_WIDTH, LOGO_SMALL_SPLIT } from "./logo";
 import type { Secret, TreeNode } from "../types";
 
-// The block wordmark is ~81 cols wide; only render it when the detail pane is
-// wide enough to hold it, otherwise a compact text wordmark.
-const LOGO_WIDTH = 81;
+// Only render the block wordmark when the detail pane is wide enough to hold
+// it; otherwise fall back to a compact text wordmark.
+const LOGO_WIDTH = LOGO_SMALL_WIDTH;
 
 interface Props {
   /** Row currently under the cursor (folder, entry, or nothing). */
@@ -63,7 +63,30 @@ export function Detail({ node, secret, loading, error, revealed, otpCode }: Prop
   );
 }
 
-/** Centered placeholder used for the splash, folder guidance, and locked entries. */
+/** Brand mark for placeholder views: block wordmark when wide, else text. */
+function LogoMark({ showLogo }: { showLogo: boolean }) {
+  // Two-tone wordmark: "tu"/"TU" in light text, "pass"/"PASS" in the accent.
+  if (!showLogo) {
+    return (
+      <text style={{ attributes: TextAttributes.BOLD }}>
+        <span style={{ fg: theme.text }}>tu</span>
+        <span style={{ fg: theme.accent }}>pass</span>
+      </text>
+    );
+  }
+  return (
+    <Fragment>
+      {LOGO_SMALL.map((line, i) => (
+        <text key={i}>
+          <span style={{ fg: theme.text }}>{line.slice(0, LOGO_SMALL_SPLIT)}</span>
+          <span style={{ fg: theme.accent }}>{line.slice(LOGO_SMALL_SPLIT)}</span>
+        </text>
+      ))}
+    </Fragment>
+  );
+}
+
+/** Centered placeholder used for the empty state, folder guidance, and locked entries. */
 function Centered({ children }: { children: ReactNode }) {
   return (
     <box
@@ -83,17 +106,11 @@ function renderBody(
   { node, secret, loading, error, revealed, otpCode }: Omit<Props, "height">,
   showLogo: boolean,
 ) {
-  // Nothing under the cursor → splash.
+  // Nothing under the cursor → empty state.
   if (!node) {
     return (
       <Centered>
-        {showLogo ? (
-          LOGO.map((line, i) => (
-            <text key={i} style={{ fg: theme.accent }}>{line}</text>
-          ))
-        ) : (
-          <text style={{ fg: theme.accent, attributes: TextAttributes.BOLD }}>tupass</text>
-        )}
+        <LogoMark showLogo={showLogo} />
         <text style={{ fg: theme.textDim, marginTop: 1 }}>
           a terminal UI for pass · 󰌑 to open an entry
         </text>
@@ -105,10 +122,11 @@ function renderBody(
   if (node.kind === "folder") {
     return (
       <Centered>
-        <text style={{ fg: theme.folder, attributes: TextAttributes.BOLD }}>
+        <LogoMark showLogo={showLogo} />
+        <text style={{ fg: theme.folder, attributes: TextAttributes.BOLD, marginTop: 1 }}>
           {`${ICON.folderClosed}  ${node.name}`}
         </text>
-        <text style={{ fg: theme.textDim, marginTop: 1 }}>folder</text>
+        <text style={{ fg: theme.textDim }}>folder</text>
         <box style={{ marginTop: 1 }}>
           <Hint
             items={[
@@ -135,10 +153,11 @@ function renderBody(
   if (!secret) {
     return (
       <Centered>
-        <text style={{ fg: theme.warn, attributes: TextAttributes.BOLD }}>
+        <LogoMark showLogo={showLogo} />
+        <text style={{ fg: theme.warn, attributes: TextAttributes.BOLD, marginTop: 1 }}>
           {`${ICON.key}  encrypted`}
         </text>
-        <text style={{ fg: theme.textDim, marginTop: 1 }}>this entry is locked</text>
+        <text style={{ fg: theme.textDim }}>this entry is locked</text>
         <box style={{ marginTop: 1 }}>
           <Hint items={[["󰌑", "open"], ["c", "copy password"], ["e", "edit"]]} />
         </box>
