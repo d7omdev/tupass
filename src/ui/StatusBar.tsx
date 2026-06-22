@@ -64,12 +64,23 @@ export function StatusBar({ busy, spinner, toast }: Props) {
 
   return (
     <box style={{ width: "100%", height: 1, flexDirection: "row", backgroundColor: theme.panel }}>
-      {/* left: status chip on a darker background */}
+      {/* Brand badge + separator; hidden on narrow to give the center room. */}
+      {!narrow && (
+        <box style={{ flexDirection: "row", backgroundColor: theme.overlay, paddingLeft: 1 }}>
+          <text style={{ attributes: TextAttributes.BOLD }}>
+            <span style={{ fg: theme.text }}>TU</span>
+            <span style={{ fg: theme.accent }}>PASS</span>
+          </text>
+        </box>
+      )}
+      {!narrow && <text style={{ fg: theme.textDim, bg: theme.overlay }}>│</text>}
+
+      {/* Status chip; flush to the separator unless narrow (no badge). */}
       <box
         style={{
           flexDirection: "row",
           backgroundColor: theme.overlay,
-          paddingLeft: 1,
+          paddingLeft: narrow ? 1 : 0,
           paddingRight: 1,
         }}
       >

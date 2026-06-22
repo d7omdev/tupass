@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "description": "A terminal UI for GNU pass (the standard unix password manager), built with OpenTUI.",
   "type": "module",
-  "private": true,
   "bin": {
     "tupass": "bin/tupass.js"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
   },
   "files": [
     "bin",

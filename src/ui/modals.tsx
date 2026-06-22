@@ -210,10 +210,56 @@ const HELP: [string, string][] = [
   ["t", "switch color theme (live preview)"],
   ["E", "expand all   ·   W collapse all"],
   ["G", "git: sync (pull --rebase + push)"],
-  ["L", "git: show recent log"],
+  ["L", "git: recent log"],
   ["?", "toggle this help"],
   ["q / ctrl+c", "quit"],
 ];
+
+// ── Git log ───────────────────────────────────────────────────────────────
+interface GitLogModalProps {
+  lines: string[];
+  /** Index of the first visible line (scroll position). */
+  offset: number;
+  /** Number of lines the dialog can show at once. */
+  viewport: number;
+}
+
+export function GitLogModal({ lines, offset, viewport }: GitLogModalProps) {
+  const empty = lines.length === 1 && lines[0] === "(no commits yet)";
+  const slice = lines.slice(offset, offset + viewport);
+  const last = Math.min(offset + viewport, lines.length);
+  const atBottom = last >= lines.length;
+  return (
+    <Modal title="git log" accent={theme.accent} width={84} height="70%">
+      <text style={{ fg: theme.textDim, marginBottom: 1 }}>
+        {/* Trailing "+" hints that more commits may load on scroll. */}
+        {empty ? "no commits yet" : `commits ${offset + 1}–${last} of ${lines.length}${atBottom ? "" : "+"}`}
+      </text>
+      <box style={{ flexDirection: "column", flexGrow: 1 }}>
+        {empty ? (
+          <text style={{ fg: theme.textDim }}>this store has no commits.</text>
+        ) : (
+          slice.map((line, i) => {
+            // `git log --oneline` rows are "<hash> <subject>"; tint the hash.
+            const sp = line.indexOf(" ");
+            const hash = sp > 0 ? line.slice(0, sp) : line;
+            const rest = sp > 0 ? line.slice(sp) : "";
+            return (
+              <text key={offset + i}>
+                <span style={{ fg: theme.accent }}>{hash}</span>
+                <span style={{ fg: theme.text }}>{rest}</span>
+              </text>
+            );
+          })
+        )}
+      </box>
+      <box style={{ flexDirection: "row", marginTop: 1 }}>
+        <Hint items={empty ? [["esc/L", "close"]] : [["j/k", "scroll"], ["esc/L", "close"]]} />
+        {!empty && !atBottom ? <text style={{ fg: theme.textDim }}>{"   ↓ more"}</text> : null}
+      </box>
+    </Modal>
+  );
+}
 
 export function HelpModal() {
   return (

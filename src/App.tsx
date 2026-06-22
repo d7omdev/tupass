@@ -20,6 +20,7 @@ import {
   InputModal,
   ConfirmModal,
   GenerateModal,
+  GitLogModal,
   HelpModal,
   type GenerateValues,
 } from "./ui/modals";
@@ -32,7 +33,7 @@ import { generatePassword } from "./lib/genpw";
 import * as pass from "./lib/pass";
 import type { Secret } from "./types";
 
-type Mode = "browse" | "search" | "input" | "entry" | "generate" | "confirm" | "help" | "theme" | "move";
+type Mode = "browse" | "search" | "input" | "entry" | "generate" | "confirm" | "help" | "theme" | "move" | "gitlog";
 type InputAction = "rename" | "duplicate" | "move-new";
 
 // Tab order. Add includes the editable "name"; edit omits it (rename via `r`).
@@ -41,6 +42,12 @@ const EDIT_FIELDS: FormField[] = ["password", "confirm", "username", "url", "not
 
 // Braille spinner frames for the busy indicator.
 const SPINNER = ["⠧", "⠏", "⠛", "⠹", "⠼", "⠶"];
+
+// Git log dialog: commits fetched per page (lazy-loaded as the view scrolls).
+const GITLOG_PAGE = 50;
+
+// Shared warning for names that `pass`/the filesystem would mishandle.
+const UNSAFE_NAME_MSG = "name can't contain '..' or start with '-'";
 
 // Keys allowed while a slow op is in flight (pure cursor movement).
 const MOVE_KEYS = new Set(["up", "down", "j", "k", "home", "end", "pageup", "pagedown"]);
@@ -119,6 +126,15 @@ export function App({ onExit }: { onExit: () => void }) {
   }, []);
 
   const [mode, setMode] = useState<Mode>("browse");
+  const [gitLogLines, setGitLogLines] = useState<string[]>([]);
+  const [gitLogOff, setGitLogOff] = useState(0);
+  // Refs mirror the above so the keyboard handler reads fresh values without
+  // re-subscribing on every scroll. `more` tracks whether another page may
+  // exist; `loading` guards against overlapping lazy-load fetches.
+  const gitLogLinesRef = useRef<string[]>([]);
+  const gitLogOffRef = useRef(0);
+  const gitLogMoreRef = useRef(false);
+  const gitLogLoadingRef = useRef(false);
   const [selected, setSelected] = useState(0);
   const [opened, setOpened] = useState<Opened | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -183,15 +199,27 @@ export function App({ onExit }: { onExit: () => void }) {
     form.password !== "" && form.confirm !== "" && form.password !== form.confirm
       ? "passwords do not match"
       : null;
-  const nameError = !formEditing && formName === "" ? "name is required" : null;
+  const nameError =
+    !formEditing && formName === ""
+      ? "name is required"
+      : !formEditing && unsafeName(formTarget)
+        ? UNSAFE_NAME_MSG
+        : null;
   const canSaveEntry =
-    form.password !== "" && form.password === form.confirm && (formEditing || formName !== "");
+    form.password !== "" &&
+    form.password === form.confirm &&
+    (formEditing || formName !== "") &&
+    !nameError;
   // After a create/generate, the new entry's name parks here until it appears
   // as a row (post reload + ancestor expansion), then we move the cursor to it.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null);
 
   // dims.height − 1 (status bar) − 2 (row vertical padding) = visible pane box.
   const paneHeight = Math.max(3, dims.height - 3);
+  // Visible rows inside the git-log dialog: the Modal is 70% tall, less ~9 lines
+  // of chrome (title, header, footer, padding). Kept slightly conservative so
+  // the list never overflows the dialog and pushes the footer off-screen.
+  const gitLogViewport = Math.max(3, Math.floor(dims.height * 0.7) - 9);
   // Below this width the side preview pane is dropped and the app becomes a
   // single full-width list with each entry's preview expanding inline.
   const narrow = dims.width < 80;
@@ -266,25 +294,26 @@ export function App({ onExit }: { onExit: () => void }) {
     }
   }, []);
 
+  // Name is passed explicitly (not read from `opened`): callers fire these right
+  // after `openEntry`, whose async setState hasn't landed yet — reading
+  // `opened.name` here would copy the PREVIOUS entry's secret (or nothing).
   const copyField = useCallback(
-    (line: number, label: string) =>
+    (name: string, line: number, label: string) =>
       runBusy(`copying ${label}…`, async () => {
-        if (!opened?.name) return;
-        await pass.copy(opened.name, line);
+        await pass.copy(name, line);
         notify(`copied ${label} — clipboard clears in 45s`, "good");
       }),
-    [opened?.name, runBusy, notify],
+    [runBusy, notify],
   );
 
   const doOtp = useCallback(
-    () =>
+    (name: string) =>
       runBusy("generating OTP…", async () => {
-        if (!opened?.name) return;
-        const code = await pass.otp(opened.name);
-        setOtpCode(code);
-        notify(`OTP ${code} generated`, "good");
+        const code = await pass.otp(name);
+        setOtpCode(code); // shown in the detail pane; kept out of the toast
+        notify("OTP generated", "good");
       }),
-    [opened?.name, runBusy, notify],
+    [runBusy, notify],
   );
 
   const doDelete = useCallback(() => {
@@ -327,6 +356,10 @@ export function App({ onExit }: { onExit: () => void }) {
       const cfg = inputCfg;
       setMode("browse");
       const v = value.trim().replace(/^\/+|\/+$/g, "");
+      if (v && unsafeName(v)) {
+        notify(UNSAFE_NAME_MSG, "warn");
+        return;
+      }
 
       // Creating a new destination folder from the move picker.
       if (cfg.action === "move-new") {
@@ -398,6 +431,10 @@ export function App({ onExit }: { onExit: () => void }) {
   const submitGenerate = useCallback(() => {
     const name = gen.name.trim();
     if (!name) return;
+    if (unsafeName(name)) {
+      notify(UNSAFE_NAME_MSG, "warn");
+      return;
+    }
     const exists = rows.some((r) => r.node.kind === "entry" && r.node.path === name);
     setMode("browse");
     return runBusy(`generating ${name}…`, async () => {
@@ -434,6 +471,18 @@ export function App({ onExit }: { onExit: () => void }) {
     [notify, runBusy],
   );
 
+  // Fetch one page of `git log --oneline`, skipping `skip` commits. Returns
+  // [] on error so callers can treat "failed" and "end of history" alike.
+  const fetchGitLogPage = useCallback(async (skip: number): Promise<string[]> => {
+    const r = await pass.git(["log", "--oneline", `--skip=${skip}`, `-${GITLOG_PAGE}`]);
+    if (r.code !== 0) return [];
+    return pass
+      .stripAnsi(r.stdout)
+      .split("\n")
+      .map((l) => l.trimEnd())
+      .filter(Boolean);
+  }, []);
+
   const gitLog = useCallback(
     () =>
       runBusy("git: reading log…", async () => {
@@ -441,14 +490,30 @@ export function App({ onExit }: { onExit: () => void }) {
           notify("store is not a git repo", "warn");
           return;
         }
-        const r = await pass.git(["log", "--oneline", "-1"]);
-        notify(
-          r.code === 0 ? `last commit: ${pass.stripAnsi(r.stdout).trim()}` : "git log failed",
-          r.code === 0 ? "info" : "danger",
-        );
+        const lines = await fetchGitLogPage(0);
+        gitLogLinesRef.current = lines.length ? lines : ["(no commits yet)"];
+        gitLogMoreRef.current = lines.length === GITLOG_PAGE; // full page ⇒ maybe more
+        gitLogOffRef.current = 0;
+        setGitLogLines(gitLogLinesRef.current);
+        setGitLogOff(0);
+        setMode("gitlog");
       }),
-    [notify, runBusy],
+    [notify, runBusy, fetchGitLogPage],
   );
+
+  // Append the next page when the viewport nears the bottom. Idempotent while a
+  // fetch is in flight and a no-op once history is exhausted.
+  const loadMoreGitLog = useCallback(async () => {
+    if (gitLogLoadingRef.current || !gitLogMoreRef.current) return;
+    gitLogLoadingRef.current = true;
+    const more = await fetchGitLogPage(gitLogLinesRef.current.length);
+    gitLogMoreRef.current = more.length === GITLOG_PAGE;
+    if (more.length) {
+      gitLogLinesRef.current = [...gitLogLinesRef.current, ...more];
+      setGitLogLines(gitLogLinesRef.current);
+    }
+    gitLogLoadingRef.current = false;
+  }, [fetchGitLogPage]);
 
   // ── Keyboard routing ────────────────────────────────────────────────────────
   const handleBrowse = useCallback(
@@ -473,14 +538,14 @@ export function App({ onExit }: { onExit: () => void }) {
       if (!currentRow) return;
       const node = currentRow.node;
 
-      if (k === "right" || k === "l" || k === "space") {
+      if (k === "right" || (k === "l" && !shift) || k === "space") {
         if (node.kind === "folder") {
           if (!currentRow.expanded) store.toggle(node.path);
           else move(1);
         } else void openEntry(node.path);
         return;
       }
-      if (k === "left" || k === "h") {
+      if (k === "left" || (k === "h" && !shift)) {
         if (node.kind === "folder" && currentRow.expanded) store.toggle(node.path);
         else jumpToParent(rows, idx, currentRow.depth, setSelected);
         return;
@@ -500,7 +565,7 @@ export function App({ onExit }: { onExit: () => void }) {
       if (k === "c" && !shift && !e.ctrl) {
         if (node.kind === "entry") {
           if (opened?.name !== node.path) void openEntry(node.path);
-          void copyField(1, "password");
+          void copyField(node.path, 1, "password");
         }
         return;
       }
@@ -508,14 +573,14 @@ export function App({ onExit }: { onExit: () => void }) {
         // Copy the 2nd line (commonly login/username); falls back gracefully.
         if (node.kind === "entry") {
           if (opened?.name !== node.path) void openEntry(node.path);
-          void copyField(2, "field 2");
+          void copyField(node.path, 2, "field 2");
         }
         return;
       }
       if (k === "o" && !shift) {
         if (node.kind === "entry") {
           if (opened?.name !== node.path) void openEntry(node.path);
-          void doOtp();
+          void doOtp(node.path);
         }
         return;
       }
@@ -555,12 +620,13 @@ export function App({ onExit }: { onExit: () => void }) {
         if (opened?.name === entryPath && opened.secret) {
           openEditForm(entryPath, opened.secret);
         } else {
-          // Decrypt first, then open the form pre-filled.
-          notify("decrypting…", "info");
-          void pass
-            .show(entryPath)
-            .then((raw) => openEditForm(entryPath, parseSecret(raw)))
-            .catch((e) => notify(messageOf(e), "danger"));
+          // Decrypt first, then open the form pre-filled. runBusy gates the busy
+          // flag + spinner so no second op can start mid-decrypt, and routes
+          // errors through its own catch.
+          void runBusy("decrypting…", async () => {
+            const raw = await pass.show(entryPath);
+            openEditForm(entryPath, parseSecret(raw));
+          });
         }
         return;
       }
@@ -635,16 +701,17 @@ export function App({ onExit }: { onExit: () => void }) {
         setMode("theme");
         return;
       }
-      if (k === "/") {
+      if (k === "/" && !shift) {
         setMode("search");
         return;
       }
+      // `?` arrives as either name "?" or shift+"/" depending on the terminal.
       if (k === "?" || (k === "/" && shift)) {
         setMode("help");
         return;
       }
     },
-    [rows, idx, currentRow, store, opened, openEntry, openEditForm, openAddForm, copyField, doOtp, gitSync, gitLog, notify, themeId],
+    [rows, idx, currentRow, store, opened, openEntry, openEditForm, openAddForm, copyField, doOtp, gitSync, gitLog, runBusy, themeId],
   );
 
   useKeyboard(
@@ -726,7 +793,25 @@ export function App({ onExit }: { onExit: () => void }) {
           return;
         }
         if (mode === "help") {
-          if (e.name === "?" ) setMode("browse");
+          if (e.name === "q") return onExit();
+          if (e.name === "?") setMode("browse");
+          return;
+        }
+        if (mode === "gitlog") {
+          if (e.name === "l") return setMode("browse");
+          const scroll = (delta: number) => {
+            const len = gitLogLinesRef.current.length;
+            const max = Math.max(0, len - gitLogViewport);
+            const n = clamp(gitLogOffRef.current + delta, 0, max);
+            gitLogOffRef.current = n;
+            setGitLogOff(n);
+            // Prefetch the next page when within one viewport of the bottom.
+            if (n + gitLogViewport * 2 >= len) void loadMoreGitLog();
+          };
+          if (e.name === "down" || e.name === "j") return scroll(1);
+          if (e.name === "up" || e.name === "k") return scroll(-1);
+          if (e.name === "pagedown" || e.name === "space") return scroll(gitLogViewport);
+          if (e.name === "pageup") return scroll(-gitLogViewport);
           return;
         }
         if (mode === "confirm") {
@@ -779,7 +864,7 @@ export function App({ onExit }: { onExit: () => void }) {
           return;
         }
       },
-      [mode, formEditing, form.field, handleBrowse, onExit, doDelete, saveEntry, previewTheme, notify, moveOptions, moveFrom, doMove],
+      [mode, formEditing, form.field, handleBrowse, onExit, doDelete, saveEntry, previewTheme, notify, moveOptions, moveFrom, doMove, gitLogViewport, loadMoreGitLog],
     ),
   );
 
@@ -881,6 +966,9 @@ export function App({ onExit }: { onExit: () => void }) {
           onSubmit={() => void submitGenerate()}
         />
       )}
+      {mode === "gitlog" && (
+        <GitLogModal lines={gitLogLines} offset={gitLogOff} viewport={gitLogViewport} />
+      )}
       {mode === "help" && <HelpModal />}
       {mode === "theme" && <ThemePicker entries={THEME_ENTRIES} index={pickIndex} />}
     </box>
@@ -926,10 +1014,17 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
+/**
+ * Reject names that `pass` (and the filesystem) would mishandle: `..` segments
+ * escape the store, and a leading "-" on any segment is parsed as a CLI flag.
+ */
+function unsafeName(name: string): boolean {
+  return name.split("/").some((seg) => seg === ".." || seg.startsWith("-"));
+}
+
 function clampLen(v: string): number {
   const n = parseInt(v.replace(/\D/g, ""), 10);
-  if (Number.isNaN(n)) return 0;
-  return Math.min(n, 128);
+  return Number.isNaN(n) ? 1 : clamp(n, 1, 128);
 }
 
 /** Delete the trailing word: drop trailing whitespace, then trailing non-space. */

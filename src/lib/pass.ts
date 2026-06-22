@@ -12,7 +12,8 @@ const PASS = "pass";
 
 /** Decrypt and return the full secret text for an entry. */
 export async function show(name: string): Promise<string> {
-  const r = await run(PASS, [name]);
+  // Explicit `show` subcommand so a name starting with "-" isn't parsed as a flag.
+  const r = await run(PASS, ["show", name]);
   if (r.code !== 0) throw new PassError(r.stderr || `failed to show ${name}`);
   return r.stdout;
 }
